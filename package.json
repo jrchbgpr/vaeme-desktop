@@ -1,14 +1,15 @@
 {
   "name": "vaeme-desktop",
   "productName": "VA EME",
-  "version": "0.1.0-test.7",
+  "version": "0.1.0-test.8",
   "description": "Desktop app for VA EME (opens app.vaeme.pro in its own window)",
   "main": "main.js",
   "private": true,
   "author": "VA EME",
   "scripts": {
     "start": "electron .",
-    "dist:mac": "electron-builder --mac --publish never"
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:win": "electron-builder --win --publish never"
   },
   "devDependencies": {
     "electron": "^45.2.3",
@@ -50,6 +51,27 @@
     },
     "dmg": {
       "title": "VA EME"
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "VA-EME-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "VA EME",
+      "runAfterFinish": true
     }
   }
 }

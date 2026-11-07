@@ -14,6 +14,11 @@ const MIN_WIDTH = 900; // stays above the app's 768px phone-layout breakpoint
 const MIN_HEIGHT = 740; // keeps the left menu from getting squashed
 const DEFAULT_SIZE = { width: 1280, height: 800 };
 
+const IS_MAC = process.platform === "darwin";
+const IS_WIN = process.platform === "win32";
+// Windows needs an app id so notifications show up under the right name.
+if (IS_WIN) app.setAppUserModelId("com.vaeme.desktop");
+
 let win = null;
 let tray = null;
 let quitting = false;
@@ -66,6 +71,7 @@ function createWindow() {
     // Mac: no black title bar. The red/yellow/green buttons sit inside VA EME's own top bar.
     ...(process.platform === "darwin" ? { titleBarStyle: "hidden", trafficLightPosition: { x: 16, y: 17 } } : {}),
     show: false,
+    autoHideMenuBar: true, // Windows: menu appears on Alt
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -154,8 +160,14 @@ function showWindow() {
 // ---------- menu bar icon ----------
 function createTray() {
   // One-color "Template" image: macOS recolors it for light/dark menu bars (the @2x/@3x files are picked up automatically).
-  const icon = nativeImage.createFromPath(path.join(__dirname, "assets", "emeTemplate.png"));
-  icon.setTemplateImage(true);
+  let icon;
+  if (IS_MAC) {
+    icon = nativeImage.createFromPath(path.join(__dirname, "assets", "emeTemplate.png"));
+    icon.setTemplateImage(true);
+  } else {
+    // Windows: the full-color logo (tray icons there are colored, not one-tone).
+    icon = nativeImage.createFromPath(path.join(__dirname, "assets", "icon-256.png")).resize({ width: 32, height: 32 });
+  }
   tray = new Tray(icon);
   tray.setToolTip("VA EME");
   const rebuild = () => tray.setContextMenu(Menu.buildFromTemplate([
@@ -187,7 +199,7 @@ function createMenu() {
         { type: "separator" },
         { role: "hide" }, { role: "hideOthers" }, { role: "unhide" },
         { type: "separator" },
-        { label: "Quit VA EME", accelerator: "Cmd+Q", click: () => { quitting = true; app.quit(); } },
+        { label: "Quit VA EME", accelerator: "CmdOrCtrl+Q", click: () => { quitting = true; app.quit(); } },
       ],
     },
     { role: "editMenu" },
@@ -256,6 +268,12 @@ ipcMain.on("vaeme:focus", () => showWindow());
 ipcMain.on("vaeme:badge", (_event, count) => {
   const n = Math.max(0, Math.floor(Number(count) || 0));
   if (process.platform === "darwin" && app.dock) app.dock.setBadge(n ? (n > 99 ? "99+" : String(n)) : "");
+  if (IS_WIN && win && !win.isDestroyed() && n === 0) win.setOverlayIcon(null, "");
+});
+// Windows: the unread count is drawn by the page as a small image and shown on the taskbar icon.
+ipcMain.on("vaeme:badge-image", (_event, { count, dataURL }) => {
+  if (!IS_WIN || !win || win.isDestroyed()) return;
+  try { win.setOverlayIcon(nativeImage.createFromDataURL(String(dataURL)), `${count} unread`); } catch { /* ignore */ }
 });
 
 // Native macOS notifications from the main process (more reliable than the web Notification API in Electron).

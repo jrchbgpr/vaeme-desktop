@@ -46,3 +46,15 @@ Closing the window does **not** quit the app. It keeps running in the menu bar (
 ## Updating the app
 
 When a new app version is released, VA EME shows a message with a download link, or choose **VA EME → Check for Updates…** in the menu bar. Download the new `.dmg` and drag it over the old one in Applications (choose **Replace**). Your login and settings are kept.
+
+---
+
+# Installing VA EME on Windows
+
+1. Download `VA-EME-Setup-….exe` from the latest release: https://github.com/jrchbgpr/vaeme-desktop/releases
+2. Double-click it. It installs by itself (no administrator password) and opens VA EME.
+3. **First time only:** Windows may show a blue "Windows protected your PC" screen because the app is not signed. Click **More info**, then **Run anyway**.
+
+VA EME keeps running in the system tray (bottom right, near the clock) when you close the window, so alerts keep arriving. To quit: right-click the tray icon, then **Quit VA EME**.
+
+To update, download the new installer and run it over the old one. Your login and settings are kept.
