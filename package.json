@@ -1,7 +1,7 @@
 {
   "name": "vaeme-desktop",
   "productName": "VA EME",
-  "version": "0.1.0-test.6",
+  "version": "0.1.0-test.7",
   "description": "Desktop app for VA EME (opens app.vaeme.pro in its own window)",
   "main": "main.js",
   "private": true,
