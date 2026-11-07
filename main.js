@@ -70,6 +70,8 @@ function createWindow() {
     backgroundColor: "#1F2328",
     // Mac: no black title bar. The red/yellow/green buttons sit inside VA EME's own top bar.
     ...(process.platform === "darwin" ? { titleBarStyle: "hidden", trafficLightPosition: { x: 16, y: 17 } } : {}),
+    // Windows: minimize / maximize / close sit inside VA EME's own top bar (48px tall, like the bar itself).
+    ...(process.platform === "win32" ? { titleBarStyle: "hidden", titleBarOverlay: { color: "#1F2328", symbolColor: "#ffffff", height: 48 } } : {}),
     show: false,
     autoHideMenuBar: true, // Windows: menu appears on Alt
     webPreferences: {
@@ -87,17 +89,25 @@ function createWindow() {
 
   // Let the top bar act as the window's drag handle (the native title bar is gone), keeping controls clickable.
   win.webContents.on("dom-ready", () => {
-    if (process.platform !== "darwin" || !isAppUrl(win.webContents.getURL())) return;
+    if (!(IS_MAC || IS_WIN) || !isAppUrl(win.webContents.getURL())) return;
     win.webContents.insertCSS(`
       .workspace-bar { -webkit-app-region: drag; }
       .workspace-bar :is(button, a, input, select, textarea, label, [role="button"], [role="combobox"], [role="menuitem"], [tabindex]) { -webkit-app-region: no-drag; }
       /* While a dialog, menu or popover is open, the top bar must not swallow clicks beneath it. */
       body:has([role="dialog"], [role="alertdialog"], [role="menu"], [data-radix-popper-content-wrapper]) .workspace-bar { -webkit-app-region: no-drag; }
       /* File viewer: a little smaller, starting below the window buttons. */
-      .file-viewer { top: 44px !important; right: 24px !important; bottom: 24px !important; left: 24px !important; }
+      .file-viewer { top: ${IS_WIN ? 56 : 44}px !important; right: 24px !important; bottom: 24px !important; left: 24px !important; }
+      ${IS_WIN ? ".workspace-bar { padding-right: 150px !important; }" : ""}
       body:not(:has(.workspace-bar))::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 28px; -webkit-app-region: drag; z-index: 2147483647; pointer-events: auto; }
     `).catch(() => {});
   });
+
+  if (IS_WIN) {
+    win.webContents.on("did-finish-load", syncTitleBarOverlay);
+    win.webContents.on("did-navigate-in-page", () => setTimeout(syncTitleBarOverlay, 400));
+    const timer = setInterval(syncTitleBarOverlay, 4000);
+    win.on("closed", () => clearInterval(timer));
+  }
 
   // Problems from inside the site are saved to a log file (Help > Open log folder) so they are easy to report.
   win.webContents.on("console-message", (event, level, message, line, sourceId) => {
@@ -137,6 +147,24 @@ function createWindow() {
     // The page shows the technical reason in small text so problems are easy to report.
     win.loadFile(path.join(__dirname, "offline.html"), { query: { code: String(code), desc: String(desc), url: String(url) } });
   });
+}
+
+// Windows: keep the minimize/maximize/close buttons the same color as VA EME's top bar (it changes with the theme).
+async function syncTitleBarOverlay() {
+  if (!IS_WIN || !win || win.isDestroyed() || !isAppUrl(win.webContents.getURL())) return;
+  try {
+    const css = await win.webContents.executeJavaScript(`(() => {
+      let e = document.querySelector(".workspace-bar") || document.body;
+      while (e) { const c = getComputedStyle(e).backgroundColor; if (c && !/rgba\\(0, 0, 0, 0\\)|transparent/.test(c)) return c; e = e.parentElement; }
+      return "rgb(31, 35, 40)";
+    })()`);
+    const m = String(css).match(/\d+(\.\d+)?/g);
+    if (!m || m.length < 3) return;
+    const [r, g, b] = m.slice(0, 3).map(Number);
+    const hex = "#" + [r, g, b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+    const light = (0.299 * r + 0.587 * g + 0.114 * b) > 150;
+    win.setTitleBarOverlay({ color: hex, symbolColor: light ? "#1f2328" : "#ffffff", height: 48 });
+  } catch { /* ignore */ }
 }
 
 function isAppUrl(url) {
