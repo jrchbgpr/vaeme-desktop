@@ -1,6 +1,6 @@
 # Installing VA EME on a Mac
 
-The app opens **app.vaeme.com** in its own window. Everything inside it (chat, tasks, files) updates by itself whenever the site is updated. You only reinstall if the team is told there is a new *app* version.
+The app opens **app.vaeme.pro** in its own window. Everything inside it (chat, tasks, files) updates by itself whenever the site is updated. You only reinstall if the team is told there is a new *app* version.
 
 ## Which file do I download?
 

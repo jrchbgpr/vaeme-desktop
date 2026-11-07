@@ -1,8 +1,8 @@
 {
   "name": "vaeme-desktop",
   "productName": "VA EME",
-  "version": "0.1.0-test.1",
-  "description": "Desktop app for VA EME (opens app.vaeme.com in its own window)",
+  "version": "0.1.0-test.2",
+  "description": "Desktop app for VA EME (opens app.vaeme.pro in its own window)",
   "main": "main.js",
   "private": true,
   "author": "VA EME",
@@ -36,7 +36,13 @@
       "identity": null,
       "hardenedRuntime": false,
       "target": [
-        { "target": "dmg", "arch": ["arm64", "x64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ],
       "extendInfo": {
         "NSMicrophoneUsageDescription": "VA EME uses the microphone for voice messages.",

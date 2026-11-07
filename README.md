@@ -1,6 +1,6 @@
 # vaeme-desktop
 
-Desktop wrapper (Electron) for VA EME. It opens the live site, https://app.vaeme.com/app, in its own window.
+Desktop wrapper (Electron) for VA EME. It opens the live site, https://app.vaeme.pro/app, in its own window.
 
 - **Website changes** (published from Lovable) reach everyone on their next refresh. No new installer.
 - **Shell changes** (this repo: window size, menu bar icon, notifications bridge, Dock badge, app address, icon) need a new build and a new download.

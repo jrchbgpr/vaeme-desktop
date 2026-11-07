@@ -5,7 +5,7 @@ const { app, BrowserWindow, Menu, Tray, nativeImage, shell, dialog, ipcMain, ses
 const fs = require("fs");
 const path = require("path");
 
-const APP_URL = "https://app.vaeme.com/app";
+const APP_URL = "https://app.vaeme.pro/app";
 const APP_ORIGIN = new URL(APP_URL).origin;
 const RELEASES_API = "https://api.github.com/repos/jrchbgpr/vaeme-desktop/releases?per_page=5";
 const RELEASES_PAGE = "https://github.com/jrchbgpr/vaeme-desktop/releases";
@@ -89,9 +89,11 @@ function createWindow() {
   });
 
   // Offline / server unreachable: show a friendly page with a retry button.
-  win.webContents.on("did-fail-load", (_event, code, _desc, url, isMainFrame) => {
+  win.webContents.on("did-fail-load", (_event, code, desc, url, isMainFrame) => {
     if (!isMainFrame || code === -3 /* aborted */ || !url.startsWith("http")) return;
-    win.loadFile(path.join(__dirname, "offline.html"));
+    console.error(`[load failed] ${code} ${desc} ${url}`);
+    // The page shows the technical reason in small text so problems are easy to report.
+    win.loadFile(path.join(__dirname, "offline.html"), { query: { code: String(code), desc: String(desc), url: String(url) } });
   });
 }
 

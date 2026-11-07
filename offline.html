@@ -21,9 +21,12 @@
   <h1>Can't reach VA EME</h1>
   <p>Check your internet connection. It will reconnect on its own when you're back online.</p>
   <button id="retry">Try again</button>
+  <p id="details" style="margin:20px 0 0;font-size:12px;opacity:.55;word-break:break-all"></p>
 </main>
 <script>
-  const APP = "https://app.vaeme.com/app";
+  const APP = "https://app.vaeme.pro/app";
+  const q = new URLSearchParams(location.search);
+  if (q.get("desc")) document.getElementById("details").textContent = "Error " + q.get("code") + ": " + q.get("desc") + " (" + q.get("url") + ")";
   document.getElementById("retry").addEventListener("click", () => { location.href = APP; });
   window.addEventListener("online", () => { location.href = APP; });
 </script>
