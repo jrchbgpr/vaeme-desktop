@@ -85,8 +85,10 @@ function createWindow() {
     win.webContents.insertCSS(`
       .workspace-bar { -webkit-app-region: drag; }
       .workspace-bar :is(button, a, input, select, textarea, label, [role="button"], [role="combobox"], [role="menuitem"], [tabindex]) { -webkit-app-region: no-drag; }
-      .file-viewer .viewer-header { padding-left: 76px !important; -webkit-app-region: drag; }
-      .file-viewer .viewer-header :is(button, a, input) { -webkit-app-region: no-drag; }
+      /* While a dialog, menu or popover is open, the top bar must not swallow clicks beneath it. */
+      body:has([role="dialog"], [role="alertdialog"], [role="menu"], [data-radix-popper-content-wrapper]) .workspace-bar { -webkit-app-region: no-drag; }
+      /* File viewer: a little smaller, starting below the window buttons. */
+      .file-viewer { top: 44px !important; right: 24px !important; bottom: 24px !important; left: 24px !important; }
       body:not(:has(.workspace-bar))::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 28px; -webkit-app-region: drag; z-index: 2147483647; pointer-events: auto; }
     `).catch(() => {});
   });
