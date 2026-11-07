@@ -6,10 +6,7 @@ The app opens **app.vaeme.pro** in its own window. Everything inside it (chat, t
 
 Open the latest release: https://github.com/jrchbgpr/vaeme-desktop/releases
 
-- **Apple Silicon** (M1, M2, M3, M4 Macs): `VA-EME-…-arm64.dmg`
-- **Intel Macs**: `VA-EME-…-x64.dmg`
-
-Not sure? Apple menu → About This Mac. If it says "Chip: Apple M…" use arm64. If it says "Processor: Intel" use x64.
+Download `VA-EME-…-arm64.dmg`. This app is built for Macs with an Apple chip (M1, M2, M3, M4). Not sure? Apple menu → About This Mac should say "Chip: Apple M…".
 
 ## Install
 

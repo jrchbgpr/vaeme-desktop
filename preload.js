@@ -11,26 +11,32 @@ contextBridge.exposeInMainWorld("vaemeDesktop", {
   focus: () => ipcRenderer.send("vaeme:focus"),
 });
 
-// The site shows alerts through registration.showNotification() (service worker). Electron doesn't
-// support that, so route it to the regular Notification API, which Electron shows natively.
-// Clicking an alert brings the window forward and asks the site to open the right place,
-// using the same "vaeme:open" message its service worker normally sends.
+// The site shows alerts through registration.showNotification() (service worker) and checks
+// Notification.permission. Electron has no browser push service, so: report "granted" (the shell
+// already allows notifications for this site only) and hand each alert to the Mac's native notifications.
+// Clicking one brings the window forward and sends the site the same "vaeme:open" message its service worker would.
+ipcRenderer.on("vaeme:open", (_event, url) => {
+  webFrame.executeJavaScript(
+    `navigator.serviceWorker && navigator.serviceWorker.dispatchEvent(new MessageEvent("message", { data: { type: "vaeme:open", url: ${JSON.stringify(String(url))} } }));`,
+  ).catch(() => {});
+});
+
+contextBridge.exposeInMainWorld("__vaemeNotify", (payload) => ipcRenderer.send("vaeme:notify", payload));
+
 webFrame.executeJavaScript(`(() => {
+  const notify = window.__vaemeNotify;
+  try { delete window.__vaemeNotify; } catch (e) {}
+  if (typeof Notification !== "undefined") {
+    try { Object.defineProperty(Notification, "permission", { get: () => "granted", configurable: true }); } catch (e) {}
+    Notification.requestPermission = (cb) => { if (typeof cb === "function") cb("granted"); return Promise.resolve("granted"); };
+  }
   const proto = window.ServiceWorkerRegistration && window.ServiceWorkerRegistration.prototype;
   if (!proto || proto.__vaemePatched) return;
   proto.__vaemePatched = true;
   proto.showNotification = function (title, options) {
     options = options || {};
     try {
-      const n = new Notification(title, options);
-      n.onclick = () => {
-        n.close();
-        if (window.vaemeDesktop) window.vaemeDesktop.focus();
-        const url = options.data && options.data.url;
-        if (url && navigator.serviceWorker) {
-          navigator.serviceWorker.dispatchEvent(new MessageEvent("message", { data: { type: "vaeme:open", url } }));
-        }
-      };
+      notify({ title: String(title || ""), body: String(options.body || ""), silent: !!options.silent, url: options.data && options.data.url });
     } catch (e) { /* ignore */ }
     return Promise.resolve();
   };
