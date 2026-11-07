@@ -1,0 +1,234 @@
+// VA EME desktop shell: a thin Electron wrapper around the live web app.
+// Everything inside the window (chat, tasks, files...) is the website, so Lovable publishes reach
+// everyone without a new installer. Only things in THIS file need a shell update.
+const { app, BrowserWindow, Menu, Tray, nativeImage, shell, dialog, ipcMain, session, net } = require("electron");
+const fs = require("fs");
+const path = require("path");
+
+const APP_URL = "https://app.vaeme.com/app";
+const APP_ORIGIN = new URL(APP_URL).origin;
+const RELEASES_API = "https://api.github.com/repos/jrchbgpr/vaeme-desktop/releases?per_page=5";
+const RELEASES_PAGE = "https://github.com/jrchbgpr/vaeme-desktop/releases";
+
+const MIN_WIDTH = 900; // stays above the app's 768px phone-layout breakpoint
+const MIN_HEIGHT = 600;
+const DEFAULT_SIZE = { width: 1280, height: 800 };
+
+let win = null;
+let tray = null;
+let quitting = false;
+
+// ---------- tiny settings file (window size/position, launch-at-login choice) ----------
+const settingsFile = () => path.join(app.getPath("userData"), "shell-settings.json");
+function readSettings() {
+  try { return JSON.parse(fs.readFileSync(settingsFile(), "utf8")); } catch { return {}; }
+}
+function writeSettings(patch) {
+  try { fs.writeFileSync(settingsFile(), JSON.stringify({ ...readSettings(), ...patch })); } catch { /* ignore */ }
+}
+
+// ---------- only one copy of the app ----------
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+}
+app.on("second-instance", () => showWindow());
+
+// ---------- window ----------
+function savedBounds() {
+  const b = readSettings().bounds;
+  if (!b || typeof b.width !== "number") return DEFAULT_SIZE;
+  const { screen } = require("electron");
+  const visible = screen.getAllDisplays().some((d) => {
+    const a = d.workArea;
+    return b.x !== undefined && b.x + 100 > a.x && b.x < a.x + a.width - 100 && b.y + 50 > a.y && b.y < a.y + a.height - 50;
+  });
+  return visible ? b : { width: b.width, height: b.height };
+}
+
+function createWindow() {
+  win = new BrowserWindow({
+    ...savedBounds(),
+    minWidth: MIN_WIDTH,
+    minHeight: MIN_HEIGHT,
+    title: "VA EME",
+    backgroundColor: "#1F2328",
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      spellcheck: true,
+    },
+  });
+  win.once("ready-to-show", () => win.show());
+  win.loadURL(APP_URL);
+
+  // Remember size and position.
+  const save = () => { if (win && !win.isMinimized() && !win.isFullScreen()) writeSettings({ bounds: win.getBounds() }); };
+  win.on("resize", save);
+  win.on("move", save);
+
+  // Closing hides the window so alerts keep arriving. Quit from the menu to exit completely.
+  win.on("close", (event) => {
+    if (!quitting) {
+      event.preventDefault();
+      if (win.isFullScreen()) win.setFullScreen(false);
+      win.hide();
+    }
+  });
+
+  // Links: the VA EME site stays in the window, everything else opens in the normal browser.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (isAppUrl(url)) { win.loadURL(url); } else { openExternal(url); }
+    return { action: "deny" };
+  });
+  win.webContents.on("will-navigate", (event, url) => {
+    if (url.startsWith("file://")) return; // our offline page
+    if (!isAppUrl(url)) { event.preventDefault(); openExternal(url); }
+  });
+
+  // Offline / server unreachable: show a friendly page with a retry button.
+  win.webContents.on("did-fail-load", (_event, code, _desc, url, isMainFrame) => {
+    if (!isMainFrame || code === -3 /* aborted */ || !url.startsWith("http")) return;
+    win.loadFile(path.join(__dirname, "offline.html"));
+  });
+}
+
+function isAppUrl(url) {
+  try { return new URL(url).origin === APP_ORIGIN; } catch { return false; }
+}
+function openExternal(url) {
+  try {
+    const protocol = new URL(url).protocol;
+    if (protocol === "https:" || protocol === "http:" || protocol === "mailto:") shell.openExternal(url);
+  } catch { /* ignore */ }
+}
+
+function showWindow() {
+  if (!win) { createWindow(); return; }
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+  if (process.platform === "darwin") app.focus({ steal: true });
+}
+
+// ---------- menu bar icon ----------
+function createTray() {
+  const icon = nativeImage.createFromPath(path.join(__dirname, "assets", "tray.png")).resize({ width: 18, height: 18 });
+  tray = new Tray(icon);
+  tray.setToolTip("VA EME");
+  const rebuild = () => tray.setContextMenu(Menu.buildFromTemplate([
+    { label: "Open VA EME", click: showWindow },
+    { type: "separator" },
+    {
+      label: "Launch at login", type: "checkbox", checked: app.getLoginItemSettings().openAtLogin,
+      click: (item) => { app.setLoginItemSettings({ openAtLogin: item.checked }); writeSettings({ loginChoice: item.checked }); rebuild(); },
+    },
+    { label: "Check for updates…", click: () => checkForUpdates(true) },
+    { type: "separator" },
+    { label: "Quit VA EME", click: () => { quitting = true; app.quit(); } },
+  ]));
+  rebuild();
+  tray.on("click", showWindow);
+}
+
+// ---------- app menu (needed for copy/paste/undo shortcuts on Mac) ----------
+function createMenu() {
+  const template = [
+    {
+      label: app.name,
+      submenu: [
+        { role: "about" },
+        { label: "Check for Updates…", click: () => checkForUpdates(true) },
+        { type: "separator" },
+        { role: "hide" }, { role: "hideOthers" }, { role: "unhide" },
+        { type: "separator" },
+        { label: "Quit VA EME", accelerator: "Cmd+Q", click: () => { quitting = true; app.quit(); } },
+      ],
+    },
+    { role: "editMenu" },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" }, { role: "forceReload" },
+        { type: "separator" },
+        { role: "resetZoom" }, { role: "zoomIn" }, { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    },
+    { role: "windowMenu" },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+// ---------- update check (new SHELL versions only; the website updates itself) ----------
+function parseVersion(v) {
+  const m = String(v).replace(/^v/, "").match(/^(\d+)\.(\d+)\.(\d+)(?:-[a-z]+\.?(\d+))?/i);
+  if (!m) return null;
+  const pre = String(v).includes("-");
+  return [Number(m[1]), Number(m[2]), Number(m[3]), pre ? Number(m[4] || 0) : Infinity];
+}
+function isNewer(a, b) {
+  const x = parseVersion(a), y = parseVersion(b);
+  if (!x || !y) return false;
+  for (let i = 0; i < 4; i++) { if (x[i] !== y[i]) return x[i] > y[i]; }
+  return false;
+}
+async function checkForUpdates(manual) {
+  try {
+    const response = await net.fetch(RELEASES_API, { headers: { Accept: "application/vnd.github+json" } });
+    if (!response.ok) throw new Error(String(response.status));
+    const releases = (await response.json()).filter((r) => !r.draft);
+    const latest = releases.find((r) => isNewer(r.tag_name, app.getVersion()));
+    if (latest) {
+      const { response: choice } = await dialog.showMessageBox({
+        type: "info", buttons: ["Open download page", "Later"], defaultId: 0,
+        message: "A new version of the VA EME app is available",
+        detail: `You have ${app.getVersion()}. The newest is ${latest.tag_name.replace(/^v/, "")}.\n\nThe VA EME website itself always updates on its own. This is only the app wrapper.`,
+      });
+      if (choice === 0) shell.openExternal(latest.html_url || RELEASES_PAGE);
+    } else if (manual) {
+      dialog.showMessageBox({ type: "info", message: "You're up to date", detail: `VA EME app version ${app.getVersion()}.`, buttons: ["OK"] });
+    }
+  } catch {
+    if (manual) dialog.showMessageBox({ type: "warning", message: "Couldn't check for updates", detail: "Check your internet connection and try again.", buttons: ["OK"] });
+  }
+}
+
+// ---------- permissions: notifications, microphone, camera for the VA EME site only ----------
+function setupPermissions() {
+  const allowed = new Set(["notifications", "media", "clipboard-sanitized-write", "fullscreen"]);
+  const fromApp = (contents) => { try { return new URL(contents.getURL()).origin === APP_ORIGIN; } catch { return false; } };
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => callback(allowed.has(permission) && fromApp(contents)));
+  session.defaultSession.setPermissionCheckHandler((contents, permission) => !!contents && allowed.has(permission) && fromApp(contents));
+}
+
+// ---------- messages from the website (preload) ----------
+ipcMain.on("vaeme:focus", () => showWindow());
+ipcMain.on("vaeme:badge", (_event, count) => {
+  const n = Math.max(0, Math.floor(Number(count) || 0));
+  if (process.platform === "darwin" && app.dock) app.dock.setBadge(n ? (n > 99 ? "99+" : String(n)) : "");
+});
+
+// ---------- start ----------
+app.whenReady().then(() => {
+  setupPermissions();
+  createMenu();
+  createTray();
+  createWindow();
+
+  // Launch at login: on by default the first time, then the person's own choice is respected.
+  if (readSettings().loginChoice === undefined) {
+    app.setLoginItemSettings({ openAtLogin: true });
+    writeSettings({ loginChoice: true });
+  }
+
+  setTimeout(() => checkForUpdates(false), 15000);
+  app.on("activate", showWindow); // Dock icon click brings the window back
+});
+
+app.on("before-quit", () => { quitting = true; });
+// Keep running in the menu bar when the window is closed.
+app.on("window-all-closed", () => { /* stay alive */ });

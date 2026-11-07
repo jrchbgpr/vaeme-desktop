@@ -1,0 +1,50 @@
+{
+  "name": "vaeme-desktop",
+  "productName": "VA EME",
+  "version": "0.1.0-test.1",
+  "description": "Desktop app for VA EME (opens app.vaeme.com in its own window)",
+  "main": "main.js",
+  "private": true,
+  "author": "VA EME",
+  "scripts": {
+    "start": "electron .",
+    "dist:mac": "electron-builder --mac --publish never"
+  },
+  "devDependencies": {
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.vaeme.desktop",
+    "productName": "VA EME",
+    "artifactName": "VA-EME-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "offline.html",
+      "assets/**/*",
+      "package.json"
+    ],
+    "afterPack": "build/afterPack.js",
+    "mac": {
+      "category": "public.app-category.business",
+      "icon": "build/icon.png",
+      "identity": null,
+      "hardenedRuntime": false,
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] }
+      ],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "VA EME uses the microphone for voice messages.",
+        "NSCameraUsageDescription": "VA EME may use the camera when you attach photos or join calls."
+      }
+    },
+    "dmg": {
+      "title": "VA EME"
+    }
+  }
+}
