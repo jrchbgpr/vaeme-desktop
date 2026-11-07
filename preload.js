@@ -22,10 +22,12 @@ ipcRenderer.on("vaeme:open", (_event, url) => {
 });
 
 contextBridge.exposeInMainWorld("__vaemeNotify", (payload) => ipcRenderer.send("vaeme:notify", payload));
+contextBridge.exposeInMainWorld("__vaemeLog", (line) => ipcRenderer.send("vaeme:log", line));
 
 webFrame.executeJavaScript(`(() => {
   const notify = window.__vaemeNotify;
-  try { delete window.__vaemeNotify; } catch (e) {}
+  const logLine = window.__vaemeLog;
+  try { delete window.__vaemeNotify; delete window.__vaemeLog; } catch (e) {}
   if (typeof Notification !== "undefined") {
     try { Object.defineProperty(Notification, "permission", { get: () => "granted", configurable: true }); } catch (e) {}
     Notification.requestPermission = (cb) => { if (typeof cb === "function") cb("granted"); return Promise.resolve("granted"); };
@@ -36,6 +38,7 @@ webFrame.executeJavaScript(`(() => {
   proto.showNotification = function (title, options) {
     options = options || {};
     try {
+      logLine("alert requested: " + String(title));
       notify({ title: String(title || ""), body: String(options.body || ""), silent: !!options.silent, url: options.data && options.data.url });
     } catch (e) { /* ignore */ }
     return Promise.resolve();

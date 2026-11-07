@@ -11,7 +11,7 @@ const RELEASES_API = "https://api.github.com/repos/jrchbgpr/vaeme-desktop/releas
 const RELEASES_PAGE = "https://github.com/jrchbgpr/vaeme-desktop/releases";
 
 const MIN_WIDTH = 900; // stays above the app's 768px phone-layout breakpoint
-const MIN_HEIGHT = 600;
+const MIN_HEIGHT = 740; // keeps the left menu from getting squashed
 const DEFAULT_SIZE = { width: 1280, height: 800 };
 
 let win = null;
@@ -72,6 +72,8 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
       spellcheck: true,
+      autoplayPolicy: "no-user-gesture-required", // message chime plays without a click first
+      backgroundThrottling: false,                // keep receiving messages while the window is hidden/behind others
     },
   });
   win.once("ready-to-show", () => win.show());
@@ -83,6 +85,8 @@ function createWindow() {
     win.webContents.insertCSS(`
       .workspace-bar { -webkit-app-region: drag; }
       .workspace-bar :is(button, a, input, select, textarea, label, [role="button"], [role="combobox"], [role="menuitem"], [tabindex]) { -webkit-app-region: no-drag; }
+      .file-viewer .viewer-header { padding-left: 76px !important; -webkit-app-region: drag; }
+      .file-viewer .viewer-header :is(button, a, input) { -webkit-app-region: no-drag; }
       body:not(:has(.workspace-bar))::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 28px; -webkit-app-region: drag; z-index: 2147483647; pointer-events: auto; }
     `).catch(() => {});
   });
@@ -147,7 +151,9 @@ function showWindow() {
 
 // ---------- menu bar icon ----------
 function createTray() {
-  const icon = nativeImage.createFromPath(path.join(__dirname, "assets", "tray.png")).resize({ width: 18, height: 18 });
+  // One-color "Template" image: macOS recolors it for light/dark menu bars (the @2x/@3x files are picked up automatically).
+  const icon = nativeImage.createFromPath(path.join(__dirname, "assets", "emeTemplate.png"));
+  icon.setTemplateImage(true);
   tray = new Tray(icon);
   tray.setToolTip("VA EME");
   const rebuild = () => tray.setContextMenu(Menu.buildFromTemplate([
@@ -174,6 +180,7 @@ function createMenu() {
         { role: "about" },
         { label: "Check for Updates…", click: () => checkForUpdates(true) },
         { label: "Send Test Notification", click: () => showNativeNotification({ title: "VA EME", body: "Notifications are working." }) },
+        { label: "Send Test Notification in 5 Seconds", click: () => setTimeout(() => showNativeNotification({ title: "VA EME", body: "Notifications are working (delayed test)." }), 5000) },
         { label: "Open Log Folder", click: () => shell.openPath(app.getPath("logs")) },
         { type: "separator" },
         { role: "hide" }, { role: "hideOthers" }, { role: "unhide" },
@@ -261,6 +268,7 @@ function showNativeNotification({ title, body, url, silent }) {
   n.show();
   log(`[notify] shown: ${title}`);
 }
+ipcMain.on("vaeme:log", (_event, line) => log(`[site] ${String(line).slice(0, 300)}`));
 ipcMain.on("vaeme:notify", (_event, payload) => { if (payload && typeof payload === "object") showNativeNotification(payload); });
 
 // ---------- start ----------
