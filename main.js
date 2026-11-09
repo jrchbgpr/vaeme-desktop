@@ -71,7 +71,7 @@ function createWindow() {
     // Mac: no black title bar. The red/yellow/green buttons sit inside VA EME's own top bar.
     ...(process.platform === "darwin" ? { titleBarStyle: "hidden", trafficLightPosition: { x: 16, y: 17 } } : {}),
     // Windows: minimize / maximize / close sit inside VA EME's own top bar (48px tall, like the bar itself).
-    ...(process.platform === "win32" ? { titleBarStyle: "hidden", titleBarOverlay: { color: "#1F2328", symbolColor: "#ffffff", height: 48 } } : {}),
+    ...(process.platform === "win32" ? { titleBarStyle: "hidden", titleBarOverlay: { color: "#00000000", symbolColor: "#ffffff", height: 48 } } : {}),
     show: false,
     autoHideMenuBar: true, // Windows: menu appears on Alt
     webPreferences: {
@@ -105,7 +105,7 @@ function createWindow() {
   if (IS_WIN) {
     win.webContents.on("did-finish-load", syncTitleBarOverlay);
     win.webContents.on("did-navigate-in-page", () => setTimeout(syncTitleBarOverlay, 400));
-    const timer = setInterval(syncTitleBarOverlay, 4000);
+    const timer = setInterval(syncTitleBarOverlay, 2000);
     win.on("closed", () => clearInterval(timer));
   }
 
@@ -149,21 +149,22 @@ function createWindow() {
   });
 }
 
-// Windows: keep the minimize/maximize/close buttons the same color as VA EME's top bar (it changes with the theme).
+// Windows: the minimize/maximize/close buttons are transparent so VA EME's top bar shows through.
+// Only the symbol color changes: it looks at the real pixels behind the buttons and picks dark or light.
+let lastSymbol = "";
 async function syncTitleBarOverlay() {
-  if (!IS_WIN || !win || win.isDestroyed() || !isAppUrl(win.webContents.getURL())) return;
+  if (!IS_WIN || !win || win.isDestroyed() || !win.isVisible() || win.isMinimized() || !isAppUrl(win.webContents.getURL())) return;
   try {
-    const css = await win.webContents.executeJavaScript(`(() => {
-      let e = document.querySelector(".workspace-bar") || document.body;
-      while (e) { const c = getComputedStyle(e).backgroundColor; if (c && !/rgba\\(0, 0, 0, 0\\)|transparent/.test(c)) return c; e = e.parentElement; }
-      return "rgb(31, 35, 40)";
-    })()`);
-    const m = String(css).match(/\d+(\.\d+)?/g);
-    if (!m || m.length < 3) return;
-    const [r, g, b] = m.slice(0, 3).map(Number);
-    const hex = "#" + [r, g, b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
-    const light = (0.299 * r + 0.587 * g + 0.114 * b) > 150;
-    win.setTitleBarOverlay({ color: hex, symbolColor: light ? "#1f2328" : "#ffffff", height: 48 });
+    const width = win.getContentBounds().width;
+    const image = await win.webContents.capturePage({ x: Math.max(0, width - 150), y: 4, width: 140, height: 40 });
+    const px = image.toBitmap(); // BGRA
+    if (!px.length) return;
+    let sum = 0, count = 0;
+    for (let i = 0; i + 3 < px.length; i += 4) { sum += 0.114 * px[i] + 0.587 * px[i + 1] + 0.299 * px[i + 2]; count++; }
+    const symbolColor = sum / count > 150 ? "#1f2328" : "#ffffff";
+    if (symbolColor === lastSymbol) return;
+    lastSymbol = symbolColor;
+    win.setTitleBarOverlay({ color: "#00000000", symbolColor, height: 48 });
   } catch { /* ignore */ }
 }
 
