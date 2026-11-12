@@ -1,7 +1,7 @@
 // VA EME desktop shell: a thin Electron wrapper around the live web app.
 // Everything inside the window (chat, tasks, files...) is the website, so Lovable publishes reach
 // everyone without a new installer. Only things in THIS file need a shell update.
-const { app, BrowserWindow, Menu, Tray, Notification, nativeImage, shell, dialog, ipcMain, session, net } = require("electron");
+const { app, BrowserWindow, Menu, Tray, Notification, nativeImage, nativeTheme, shell, dialog, ipcMain, session, net } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
@@ -321,7 +321,18 @@ ipcMain.on("vaeme:log", (_event, line) => log(`[site] ${String(line).slice(0, 30
 ipcMain.on("vaeme:notify", (_event, payload) => { if (payload && typeof payload === "object") showNativeNotification(payload); });
 
 // ---------- start ----------
+// Dock icon follows the Mac's light/dark setting while the app runs (the file in Applications stays the light one).
+function applyDockIcon() {
+  if (process.platform !== "darwin" || !app.dock) return;
+  try {
+    const file = nativeTheme.shouldUseDarkColors ? "dock-dark.png" : "dock-light.png";
+    app.dock.setIcon(nativeImage.createFromPath(path.join(__dirname, "assets", file)));
+  } catch { /* keep the packaged icon */ }
+}
+
 app.whenReady().then(() => {
+  applyDockIcon();
+  nativeTheme.on("updated", applyDockIcon);
   setupPermissions();
   createMenu();
   createTray();
