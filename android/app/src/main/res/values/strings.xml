@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="asset_statements" translatable="false">[{ \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"android_app\", \"package_name\": \"com.vaeme.app\", \"sha256_cert_fingerprints\": [\"7E:88:87:9F:A4:86:4F:A1:B7:76:B1:CF:21:3B:B2:5C:8F:B1:E7:72:8A:94:08:0B:51:58:7A:B0:4E:87:53:DF\"] } }]</string>
-</resources>

@@ -1,0 +1,32 @@
+{
+  "appId": "com.vaeme.app",
+  "appName": "VA EME",
+  "webDir": "www",
+  "server": {
+    "url": "https://app.vaeme.pro/app",
+    "cleartext": false,
+    "allowNavigation": [
+      "app.vaeme.pro",
+      "*.supabase.co",
+      "accounts.google.com"
+    ]
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#FFFFFF",
+    "adjustMarginsForEdgeToEdge": "force"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0,
+      "backgroundColor": "#FFFFFF"
+    },
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
+  }
+}

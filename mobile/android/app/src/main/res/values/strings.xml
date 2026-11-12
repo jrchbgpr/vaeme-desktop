@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">VA EME</string>
+    <string name="title_activity_main">VA EME</string>
+    <string name="package_name">com.vaeme.app</string>
+    <string name="custom_url_scheme">com.vaeme.app</string>
+</resources>

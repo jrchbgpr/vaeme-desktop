@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "340327385417",
+    "project_id": "va-eme",
+    "storage_bucket": "va-eme.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:340327385417:android:855d78c4e162051db03298",
+        "android_client_info": {
+          "package_name": "com.vaeme.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-BbzuEmuc2hNYIY6aTw9w39i8FJg_Drw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
