@@ -50,8 +50,8 @@ webFrame.executeJavaScript(`(() => {
   const logLine = window.__vaemeLog;
   const badge = window.__vaemeBadge;
   try { delete window.__vaemeBadge; } catch (e) {}
-  // Windows has no built-in app badge in Electron: route the site's navigator.setAppBadge() to the taskbar.
-  if (${JSON.stringify(process.platform==='win32')} && typeof navigator !== "undefined") {
+  // Electron has no built-in app badge for web pages: route the site's navigator.setAppBadge() to the Dock (Mac) or taskbar (Windows).
+  if (typeof navigator !== "undefined") {
     navigator.setAppBadge = (n) => { badge(n === undefined ? 1 : n); return Promise.resolve(); };
     navigator.clearAppBadge = () => { badge(0); return Promise.resolve(); };
   }
