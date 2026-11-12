@@ -137,6 +137,7 @@ function createWindow() {
   });
   win.webContents.on("will-navigate", (event, url) => {
     if (url.startsWith("file://")) return; // our offline page
+    if (isStorageDownload(url)) { event.preventDefault(); win.webContents.downloadURL(url); return; } // files download inside the app
     if (!isAppUrl(url)) { event.preventDefault(); openExternal(url); }
   });
 
@@ -166,6 +167,35 @@ async function syncTitleBarOverlay() {
     lastSymbol = symbolColor;
     win.setTitleBarOverlay({ color: "#00000000", symbolColor, height: 48 });
   } catch { /* ignore */ }
+}
+
+// A signed file link from the app's storage (Download buttons): saved here, not handed to the browser.
+function isStorageDownload(url) {
+  try { const u = new URL(url); return u.protocol === "https:" && /\.supabase\.co$/.test(u.hostname) && u.pathname.startsWith("/storage/v1/object/"); } catch { return false; }
+}
+
+// Downloads go straight to the Downloads folder under the file's real name (like a browser does) and the Dock/taskbar says when done.
+function setupDownloads() {
+  session.defaultSession.on("will-download", (_event, item) => {
+    const url = item.getURL();
+    let name = item.getFilename() || "download";
+    try { const u = new URL(url); const named = u.searchParams.get("download"); if (named) name = named; } catch { /* blob: or odd link */ }
+    name = path.basename(name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_")) || "download";
+    const dir = app.getPath("downloads");
+    const ext = path.extname(name), base = path.basename(name, ext);
+    let target = path.join(dir, name), n = 1;
+    while (fs.existsSync(target)) target = path.join(dir, `${base} (${n++})${ext}`);
+    item.setSavePath(target);
+    item.once("done", (_e, state) => {
+      if (state !== "completed") { log(`[download] ${state}: ${name}`); return; }
+      if (process.platform === "darwin" && app.dock) app.dock.downloadFinished(target);
+      if (Notification.isSupported()) {
+        const note = new Notification({ title: "Downloaded", body: path.basename(target), silent: true });
+        note.on("click", () => shell.showItemInFolder(target));
+        note.show();
+      }
+    });
+  });
 }
 
 function isAppUrl(url) {
@@ -334,6 +364,7 @@ app.whenReady().then(() => {
   applyDockIcon();
   nativeTheme.on("updated", applyDockIcon);
   setupPermissions();
+  setupDownloads();
   createMenu();
   createTray();
   createWindow();
