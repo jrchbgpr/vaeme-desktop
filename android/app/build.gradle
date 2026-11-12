@@ -1,0 +1,24 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.vaeme.app'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'com.vaeme.app'
+        minSdk 23
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+    }
+    signingConfigs {
+        release {
+            storeFile file(System.getenv('KEYSTORE_PATH') ?: 'release.jks')
+            storePassword System.getenv('KEY_PASSWORD')
+            keyAlias 'vaeme'
+            keyPassword System.getenv('KEY_PASSWORD')
+        }
+    }
+    buildTypes { release { signingConfig signingConfigs.release; minifyEnabled false } }
+}
+
+dependencies { implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0' }
