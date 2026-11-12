@@ -10,8 +10,8 @@ const APP_ORIGIN = new URL(APP_URL).origin;
 const RELEASES_API = "https://api.github.com/repos/jrchbgpr/vaeme-desktop/releases?per_page=5";
 const RELEASES_PAGE = "https://github.com/jrchbgpr/vaeme-desktop/releases";
 
-const MIN_WIDTH = 900; // stays above the app's 768px phone-layout breakpoint
-const MIN_HEIGHT = 740; // keeps the left menu from getting squashed
+const MIN_WIDTH = 780; // just above the app's 768px phone-layout breakpoint
+const MIN_HEIGHT = 540; // the left menu tightens up (and drops labels) when the window is short
 const DEFAULT_SIZE = { width: 1280, height: 800 };
 
 const IS_MAC = process.platform === "darwin";
